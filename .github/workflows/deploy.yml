@@ -23,15 +23,21 @@ jobs:
           # 1. Chuyển vào thư mục chứa dự án trên VPS
           cd ~/tooltaixiu.org || (mkdir -p ~/tooltaixiu.org && cd ~/tooltaixiu.org)
           
-          # 2. Cập nhật code mới nhất từ GitHub
+          # 2. Initialize git if not already a repository
+          if [ ! -d .git ]; then
+            git init
+            git remote add origin https://github.com/ngolam111019/ttx-email.git
+          fi
+          
+          # 3. Cập nhật code mới nhất từ GitHub
           git fetch --all
           git reset --hard origin/main
           
-          # 3. Tạo file .env từ GitHub Secrets để bảo mật thông tin nhạy cảm
+          # 4. Tạo file .env từ GitHub Secrets để bảo mật thông tin nhạy cảm
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" > .env
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
           echo "AWS_DEFAULT_REGION=ap-southeast-1" >> .env
           
-          # 4. Tái khởi động lại Docker Compose
-          sudo docker-compose down
+          # 5. Tái khởi động lại Docker Compose
+          sudo docker-compose down || true
           sudo docker-compose up -d --build
