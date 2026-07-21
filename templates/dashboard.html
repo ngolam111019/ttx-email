@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Marketing Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: -webkit-linear-gradient(#60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .card-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .val-total { color: #f8fafc; }
+        .val-sent { color: var(--primary); }
+        .val-opened { color: var(--warning); }
+        .val-clicked { color: var(--success); }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-in-out;
+        }
+
+        .fill-sent { background: var(--primary); }
+        .fill-opened { background: var(--warning); }
+        .fill-clicked { background: var(--success); }
+
+        .rate-text {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Glassmorphism Animation */
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+            100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Campaign Dashboard</h1>
+    <p class="subtitle">Live tracking metrics for Tool Tài Xỉu AI Campaign</p>
+
+    <div class="dashboard-grid">
+        <!-- Total Emails -->
+        <div class="card">
+            <div class="card-title">Total Database</div>
+            <div class="card-value val-total" id="val-total">0</div>
+            <div class="rate-text">Valid target emails</div>
+        </div>
+
+        <!-- Sent Emails -->
+        <div class="card" style="animation: glow 3s infinite;">
+            <div class="card-title">Sent Emails</div>
+            <div class="card-value val-sent" id="val-sent">0</div>
+            <div class="progress-bar"><div class="progress-fill fill-sent" id="bar-sent" style="width: 0%"></div></div>
+            <div class="rate-text"><span id="rate-sent">0</span>% of total</div>
+        </div>
+
+        <!-- Opened Emails -->
+        <div class="card">
+            <div class="card-title">Opened (Open Rate)</div>
+            <div class="card-value val-opened" id="val-opened">0</div>
+            <div class="progress-bar"><div class="progress-fill fill-opened" id="bar-opened" style="width: 0%"></div></div>
+            <div class="rate-text"><span id="rate-opened">0</span>% of sent</div>
+        </div>
+
+        <!-- Clicked Emails -->
+        <div class="card">
+            <div class="card-title">Clicks (CTR)</div>
+            <div class="card-value val-clicked" id="val-clicked">0</div>
+            <div class="progress-bar"><div class="progress-fill fill-clicked" id="bar-clicked" style="width: 0%"></div></div>
+            <div class="rate-text"><span id="rate-clicked">0</span>% of opened</div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                const total = data.total_emails || 0;
+                const sent = data.total_sent || 0;
+                const opened = data.total_opened || 0;
+                const clicked = data.total_clicked || 0;
+
+                // Animate Numbers
+                document.getElementById('val-total').innerText = total.toLocaleString();
+                document.getElementById('val-sent').innerText = sent.toLocaleString();
+                document.getElementById('val-opened').innerText = opened.toLocaleString();
+                document.getElementById('val-clicked').innerText = clicked.toLocaleString();
+
+                // Calculate Rates
+                const sentRate = total > 0 ? ((sent / total) * 100).toFixed(1) : 0;
+                const openRate = sent > 0 ? ((opened / sent) * 100).toFixed(1) : 0;
+                const clickRate = opened > 0 ? ((clicked / opened) * 100).toFixed(1) : 0;
+
+                // Update Bars and Text
+                document.getElementById('bar-sent').style.width = sentRate + '%';
+                document.getElementById('rate-sent').innerText = sentRate;
+
+                document.getElementById('bar-opened').style.width = openRate + '%';
+                document.getElementById('rate-opened').innerText = openRate;
+
+                document.getElementById('bar-clicked').style.width = clickRate + '%';
+                document.getElementById('rate-clicked').innerText = clickRate;
+
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+            }
+        }
+
+        // Fetch immediately, then every 5 seconds
+        fetchStats();
+        setInterval(fetchStats, 5000);
+    </script>
+</body>
+</html>

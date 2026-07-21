@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+boto3
+jinja2
+psycopg2-binary
+dnspython

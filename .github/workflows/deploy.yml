@@ -1,0 +1,37 @@
+name: CI/CD Pipeline to AWS EC2
+
+on:
+  push:
+    branches:
+      - main # Kích hoạt khi có code đẩy lên nhánh main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Deploy to VPS via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ubuntu # Tên user mặc định của AWS EC2 Ubuntu
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # 1. Chuyển vào thư mục chứa dự án trên VPS
+          cd ~/tooltaixiu.org || (mkdir -p ~/tooltaixiu.org && cd ~/tooltaixiu.org)
+          
+          # 2. Cập nhật code mới nhất từ GitHub
+          git fetch --all
+          git reset --hard origin/main
+          
+          # 3. Tạo file .env từ GitHub Secrets để bảo mật thông tin nhạy cảm
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" > .env
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
+          echo "AWS_DEFAULT_REGION=ap-southeast-1" >> .env
+          
+          # 4. Tái khởi động lại Docker Compose
+          sudo docker-compose down
+          sudo docker-compose up -d --build

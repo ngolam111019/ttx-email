@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.pem
+# Bỏ qua file Database chứa 60k email để tránh bị ghi đè mất dữ liệu khi Deploy
+*.db
+*.sqlite
+*.sqlite3
