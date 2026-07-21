@@ -127,6 +127,8 @@ def run_campaign(batch_size=100, delay_seconds=1):
 
         if success:
             db.mark_sent(email_id)
+        else:
+            db.mark_failed(email_id)
         
         time.sleep(delay_seconds) # Rate limiting to avoid SES throttle
 
