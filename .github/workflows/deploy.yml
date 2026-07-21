@@ -39,5 +39,5 @@ jobs:
           echo "AWS_DEFAULT_REGION=ap-southeast-1" >> .env
           
           # 5. Tái khởi động lại Docker Compose
-          sudo docker-compose down || true
-          sudo docker-compose up -d --build
+          sudo docker compose down || true
+          sudo docker compose up -d --build
