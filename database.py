@@ -121,7 +121,15 @@ def get_daily_stats():
 
 def get_unsent_emails(limit=100):
     with get_conn() as conn:
-        return conn.execute("SELECT id, email, token FROM email_campaign WHERE sent_at IS NULL AND failed_at IS NULL LIMIT ?", (limit,)).fetchall()
+        # CHẾ ĐỘ SANDBOX: CHỈ LẤY 3 EMAIL ĐÃ VERIFY
+        return conn.execute("""
+            SELECT id, email, token 
+            FROM email_campaign 
+            WHERE sent_at IS NULL 
+              AND failed_at IS NULL 
+              AND email IN ('ngothanhlamit@gmail.com', 'ngolam11101993@gmail.com', 'dtruong1119@gmail.com')
+            LIMIT ?
+        """, (limit,)).fetchall()
 
 def get_campaign_status():
     with get_conn() as conn:
