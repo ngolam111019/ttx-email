@@ -17,7 +17,9 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email TEXT UNIQUE NOT NULL,
                 token TEXT UNIQUE NOT NULL,
+                drip_stage INTEGER DEFAULT 1,
                 sent_at TEXT,
+                last_sent_at TEXT,
                 opened_at TEXT,
                 clicked_at TEXT,
                 failed_at TEXT
@@ -39,6 +41,13 @@ def init_db():
         except sqlite3.OperationalError:
             pass # Cột đã tồn tại
             
+        # Thử thêm cột drip_stage và last_sent_at cho Drip Campaign
+        try:
+            conn.execute("ALTER TABLE email_campaign ADD COLUMN drip_stage INTEGER DEFAULT 1")
+            conn.execute("ALTER TABLE email_campaign ADD COLUMN last_sent_at TEXT")
+        except sqlite3.OperationalError:
+            pass # Cột đã tồn tại
+
         conn.commit()
 
 def insert_email(email: str, token: str):
@@ -49,9 +58,15 @@ def insert_email(email: str, token: str):
     except sqlite3.IntegrityError:
         pass # Email already exists
 
-def mark_sent(email_id: int):
+def mark_sent(email_id: int, current_stage: int):
     with get_conn() as conn:
-        conn.execute("UPDATE email_campaign SET sent_at = ?, failed_at = NULL WHERE id = ?", (datetime.now().isoformat(), email_id))
+        now = datetime.now().isoformat()
+        if current_stage == 1:
+            conn.execute("UPDATE email_campaign SET sent_at = ?, last_sent_at = ?, failed_at = NULL, drip_stage = 2 WHERE id = ?", (now, now, email_id))
+        elif current_stage == 2:
+            conn.execute("UPDATE email_campaign SET last_sent_at = ?, failed_at = NULL, drip_stage = 3 WHERE id = ?", (now, email_id))
+        elif current_stage == 3:
+            conn.execute("UPDATE email_campaign SET last_sent_at = ?, failed_at = NULL, drip_stage = 4 WHERE id = ?", (now, email_id))
         conn.commit()
 
 def mark_failed(email_id: int):
@@ -119,17 +134,24 @@ def get_daily_stats():
             })
         return result
 
-def get_unsent_emails(limit=100):
+def get_unsent_emails(limit=50):
     with get_conn() as conn:
-        # CHẾ ĐỘ SANDBOX: CHỈ LẤY 3 EMAIL ĐÃ VERIFY
-        return conn.execute("""
-            SELECT id, email, token 
+        # Lấy những email chưa được click VÀ
+        # (Chưa gửi bao giờ OR (Đã gửi stage trước đó và cách đây ít nhất 24 tiếng) VÀ stage < 4)
+        query = """
+            SELECT id, email, token, drip_stage, last_sent_at 
             FROM email_campaign 
-            WHERE sent_at IS NULL 
-              AND failed_at IS NULL 
-              AND email IN ('ngothanhlamit@gmail.com', 'ngolam11101993@gmail.com', 'dtruong1119@gmail.com')
+            WHERE clicked_at IS NULL 
+            AND failed_at IS NULL
+            AND drip_stage <= 3
+            AND (
+                last_sent_at IS NULL 
+                OR 
+                (julianday('now') - julianday(last_sent_at)) >= 1.0
+            )
             LIMIT ?
-        """, (limit,)).fetchall()
+        """
+        return conn.execute(query, (limit,)).fetchall()
 
 def get_campaign_status():
     with get_conn() as conn:
