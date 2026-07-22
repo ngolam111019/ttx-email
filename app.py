@@ -29,8 +29,7 @@ async def track_click(token: str):
     # Mark email as clicked
     db.mark_clicked(token)
     # Redirect to the Telegram Bot
-    # TODO: Replace with the actual telegram bot link
-    telegram_bot_url = "https://t.me/ToolTaiXiuAIBot?start=email_campaign" 
+    telegram_bot_url = "https://t.me/ToolTXbot" 
     return RedirectResponse(url=telegram_bot_url)
 
 @app.get("/api/stats")
