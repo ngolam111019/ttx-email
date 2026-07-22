@@ -18,25 +18,21 @@ except Exception as e:
     ses_client = None
 
 def create_email_html(token: str) -> str:
-    # URL Tracking for clicks (replace with your actual domain when deployed)
-    TRACKING_DOMAIN = "http://localhost:8000"
-    click_url = f"{TRACKING_DOMAIN}/track/click/{token}"
+    # URL Tracking for opens
+    # Tạm thời đổi về IP của Server (Lý tưởng nhất sau này nên trỏ 1 tên miền như api.tooltaixiu.org về IP này để chống spam)
+    TRACKING_DOMAIN = "http://54.254.130.124"
     open_pixel_url = f"{TRACKING_DOMAIN}/track/open/{token}.gif"
+    click_url = f"{TRACKING_DOMAIN}/track/click/{token}"
 
     html = f"""
     <html>
-    <head></head>
-    <body>
+    <body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #000;">
         <p>Chào bạn,</p>
-        <p>Đây là kết quả thực tế của App Tool Tài Xỉu AI thế hệ mới.</p>
-        <p>Vì bạn là người dùng cũ, tôi dành riêng cho bạn <b>Mã giảm giá 55% trọn đời</b> để mở khoá tính năng VIP. Tuy nhiên, chỉ có đúng 500 mã.</p>
-        <p><b>Để nhận được mã này, bạn chỉ cần làm 2 bước đơn giản:</b></p>
-        <ol>
-            <li>Tải App và để lại Đánh giá 5 Sao trên cửa hàng.</li>
-            <li>Chụp màn hình đánh giá của bạn và gửi vào Bot Telegram của chúng tôi.</li>
-        </ol>
-        <p>👉 <a href="{click_url}" style="font-weight:bold; color: #3b82f6;">Click vào đây để mở Bot Telegram tự động</a></p>
-        
+        <p>Tôi thấy hôm qua bạn có tải app Tool Tài Xỉu nhưng chưa thấy bạn kích hoạt sử dụng phần mềm. Không biết bạn có gặp lỗi gì ở bước cài đặt không?</p>
+        <p>Nếu bạn cần hỗ trợ cài đặt hoặc lấy mã kích hoạt, bạn cứ nhắn qua Bot Telegram của tôi ở link này nhé: <a href="{click_url}">Tại đây</a></p>
+        <p>Hoặc nếu bị lỗi gì cứ Reply lại email này cho tôi nha.</p>
+        <p>Cảm ơn bạn,</p>
+        <p>Hỗ trợ kỹ thuật</p>
         <!-- Tracking Pixel -->
         <img src="{open_pixel_url}" width="1" height="1" style="display:none;" />
     </body>
@@ -45,29 +41,26 @@ def create_email_html(token: str) -> str:
     return html
 
 def create_email_text(token: str) -> str:
-    TRACKING_DOMAIN = "http://localhost:8000"
+    TRACKING_DOMAIN = "http://54.254.130.124"
     click_url = f"{TRACKING_DOMAIN}/track/click/{token}"
 
     text = f"""Chào bạn,
 
-Đây là kết quả thực tế của App Tool Tài Xỉu AI thế hệ mới.
-Vì bạn là người dùng cũ, tôi dành riêng cho bạn Mã giảm giá 55% trọn đời để mở khoá tính năng VIP. Tuy nhiên, chỉ có đúng 500 mã.
+Tôi thấy hôm qua bạn có tải app Tool Tài Xỉu nhưng chưa thấy bạn kích hoạt sử dụng phần mềm. Không biết bạn có gặp lỗi gì ở bước cài đặt không?
 
-Để nhận được mã này, bạn chỉ cần làm 2 bước đơn giản:
-1. Tải App và để lại Đánh giá 5 Sao trên cửa hàng.
-2. Chụp màn hình đánh giá của bạn và gửi vào Bot Telegram của chúng tôi.
+Nếu bạn cần hỗ trợ cài đặt hoặc lấy mã kích hoạt, bạn cứ nhắn qua Bot Telegram của tôi ở link này nhé: {click_url}
 
-👉 Link Bot Telegram: {click_url}
+Hoặc nếu bị lỗi gì cứ Reply lại email này cho tôi nha.
+
+Cảm ơn bạn,
+Hỗ trợ kỹ thuật
 """
-    return text
-
-
 def send_email(to_address: str, token: str):
     if not ses_client:
         logging.error("SES client is not initialized. Skipping send.")
         return False
 
-    subject = "App AI mới đã sẵn sàng (Và 1 nhiệm vụ nhỏ cho bạn)"
+    subject = "Lỗi cài đặt app hôm qua?"
     html_body = create_email_html(token)
     text_body = create_email_text(token)
 
