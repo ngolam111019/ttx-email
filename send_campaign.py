@@ -55,6 +55,8 @@ Hoặc nếu bị lỗi gì cứ Reply lại email này cho tôi nha.
 Cảm ơn bạn,
 Hỗ trợ kỹ thuật
 """
+    return text
+
 def send_email(to_address: str, token: str):
     if not ses_client:
         logging.error("SES client is not initialized. Skipping send.")
