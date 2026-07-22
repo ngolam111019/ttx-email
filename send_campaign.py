@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # TODO: Add your AWS SES Region and Credentials (or use IAM roles if deployed on EC2)
-AWS_REGION = "us-east-1"
+AWS_REGION = "ap-southeast-1"
 SENDER = "Admin <admin@tooltaixiu.org>"
 
 # Configure SES Client
