@@ -47,6 +47,12 @@ def init_db():
             conn.execute("ALTER TABLE email_campaign ADD COLUMN last_sent_at TEXT")
         except sqlite3.OperationalError:
             pass # Cột đã tồn tại
+            
+        # Thử thêm cột retry_count cho cơ chế Retry
+        try:
+            conn.execute("ALTER TABLE email_campaign ADD COLUMN retry_count INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass # Cột đã tồn tại
 
         conn.commit()
 
@@ -69,9 +75,15 @@ def mark_sent(email_id: int, current_stage: int):
             conn.execute("UPDATE email_campaign SET last_sent_at = ?, failed_at = NULL, drip_stage = 4 WHERE id = ?", (now, email_id))
         conn.commit()
 
-def mark_failed(email_id: int):
+def mark_failed(email_id: int, is_hard_error: bool = False):
     with get_conn() as conn:
-        conn.execute("UPDATE email_campaign SET failed_at = ? WHERE id = ?", (datetime.now().isoformat(), email_id))
+        if is_hard_error:
+            # Lỗi không thể cứu vãn (VD: Sai định dạng email, Bounced) -> Bỏ qua vĩnh viễn
+            conn.execute("UPDATE email_campaign SET failed_at = ? WHERE id = ?", (datetime.now().isoformat(), email_id))
+        else:
+            # Lỗi hệ thống mạng -> Tăng retry_count. Nếu >= 3 thì mới đánh dấu failed_at
+            conn.execute("UPDATE email_campaign SET retry_count = retry_count + 1 WHERE id = ?", (email_id,))
+            conn.execute("UPDATE email_campaign SET failed_at = ? WHERE id = ? AND retry_count >= 3", (datetime.now().isoformat(), email_id))
         conn.commit()
 
 def mark_opened(token: str):

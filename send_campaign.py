@@ -92,7 +92,7 @@ Chào bạn,"""
 def send_email(to_address: str, token: str, drip_stage: int):
     if not ses_client:
         logging.error("SES client is not initialized. Skipping send.")
-        return False
+        return False, False
 
     if drip_stage == 1:
         subject = "Lỗi cài đặt app hôm qua?"
@@ -128,11 +128,18 @@ def send_email(to_address: str, token: str, drip_stage: int):
             Source=SENDER,
         )
     except ClientError as e:
-        logging.error(f"Error sending to {to_address}: {e.response['Error']['Message']}")
-        return False
+        error_code = e.response['Error']['Code']
+        logging.error(f"SES ClientError to {to_address}: {error_code}")
+        # MessageRejected or InvalidParameterValue usually means hard bounce / invalid email
+        if error_code in ['MessageRejected', 'InvalidParameterValue', 'ConfigurationSetDoesNotExist']:
+            return False, True # is_hard_error = True
+        return False, False # is_hard_error = False
+    except Exception as e:
+        logging.error(f"Network/System error sending to {to_address}: {e}")
+        return False, False # is_hard_error = False
     else:
         logging.info(f"Email sent to {to_address}! Message ID: {response['MessageId']}")
-        return True
+        return True, False
 
 def run_campaign(batch_size=100, delay_seconds=1):
     logging.info("Fetching unsent emails...")
@@ -150,7 +157,7 @@ def run_campaign(batch_size=100, delay_seconds=1):
         token = row['token']
         drip_stage = row['drip_stage']
 
-        success = send_email(email, token, drip_stage)
+        success, is_hard = send_email(email, token, drip_stage)
         
         if not ses_client:
             logging.info(f"[SIMULATION] Sent email to {email} with token {token}")
@@ -159,7 +166,7 @@ def run_campaign(batch_size=100, delay_seconds=1):
         if success:
             db.mark_sent(email_id, drip_stage)
         else:
-            db.mark_failed(email_id)
+            db.mark_failed(email_id, is_hard_error=is_hard)
         
         time.sleep(delay_seconds)
 
