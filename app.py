@@ -50,6 +50,32 @@ async def api_toggle():
     new_status = db.toggle_campaign_status()
     return {"status": new_status}
 
+@app.post("/api/test_email")
+async def api_test_email(request: Request):
+    data = await request.json()
+    email = data.get("email")
+    stage = int(data.get("stage", 1))
+    
+    if not email:
+        return {"success": False, "message": "Email is required"}
+        
+    # Tạo hoặc lấy token cho email
+    token = f"sandbox_test_{email.split('@')[0]}"
+    try:
+        db.insert_email(email, token)
+    except:
+        pass # Already exists
+        
+    import send_campaign
+    success, is_hard = send_campaign.send_email(email, token, stage)
+    
+    if success:
+        if not send_campaign.ses_client:
+            return {"success": True, "message": f"Giả lập thành công: Đã tạo giao diện Ngày {stage} (Simulation)"}
+        return {"success": True, "message": f"Đã gửi thành công email Ngày {stage}!"}
+    else:
+        return {"success": False, "message": f"Gửi thất bại. Hard error: {is_hard}"}
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     # Serve the dashboard page

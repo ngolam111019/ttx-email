@@ -252,6 +252,29 @@
         </div>
     </div>
 
+    <!-- Sandbox Test Panel -->
+    <div class="controls-panel" style="flex-direction: column; align-items: flex-start; gap: 1rem; margin-bottom: 2rem;">
+        <div>
+            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">🧪 Sandbox Test Email</div>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">Gửi thử nghiệm kịch bản của từng Ngày (Stage) ngay lập tức tới email bất kỳ để kiểm tra hiển thị thực tế. (Bỏ qua giới hạn giờ Vàng)</div>
+        </div>
+        <div style="display: flex; gap: 1rem; width: 100%; flex-wrap: wrap;">
+            <input type="email" id="test-email" placeholder="Nhập email test (VD: ngothanhlamit@gmail.com)" 
+                   style="flex: 1; min-width: 250px; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-family: inherit;">
+            
+            <select id="test-stage" style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: white; font-family: inherit;">
+                <option value="1">Ngày 1: Thông báo lỗi & Tặng quà</option>
+                <option value="2">Ngày 2: Nhắc nhở khan hiếm</option>
+                <option value="3">Ngày 3: Dọa hủy Mã VIP</option>
+            </select>
+            
+            <button onclick="sendTestEmail()" id="btn-test" style="padding: 0.75rem 1.5rem; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                Gửi Email Test
+            </button>
+        </div>
+        <div id="test-result" style="display: none; padding: 0.75rem 1rem; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 0.9rem; margin-top: 0.5rem;"></div>
+    </div>
+
     <div class="dashboard-grid">
         <!-- Total Emails -->
         <div class="card">
@@ -399,6 +422,54 @@
 
             } catch (error) {
                 console.error("Error fetching stats:", error);
+            }
+        }
+
+        // Gửi Sandbox Test Email
+        async function sendTestEmail() {
+            const email = document.getElementById('test-email').value;
+            const stage = document.getElementById('test-stage').value;
+            const resultDiv = document.getElementById('test-result');
+            const btn = document.getElementById('btn-test');
+            
+            if (!email) {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                resultDiv.style.color = 'var(--warning)';
+                resultDiv.innerText = 'Vui lòng nhập địa chỉ email!';
+                return;
+            }
+            
+            btn.innerText = 'Đang gửi...';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            
+            try {
+                const response = await fetch('/api/test_email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, stage: parseInt(stage) })
+                });
+                const data = await response.json();
+                
+                resultDiv.style.display = 'block';
+                if (data.success) {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.color = 'var(--success)';
+                } else {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.color = '#ef4444';
+                }
+                resultDiv.innerText = data.message;
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                resultDiv.style.color = '#ef4444';
+                resultDiv.innerText = 'Lỗi kết nối tới máy chủ!';
+            } finally {
+                btn.innerText = 'Gửi Email Test';
+                btn.disabled = false;
+                btn.style.opacity = '1';
             }
         }
 
