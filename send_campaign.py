@@ -16,36 +16,27 @@ except Exception as e:
     logging.error(f"Failed to initialize SES client: {e}")
     ses_client = None
 
-def create_email_html(token: str, drip_stage: int) -> str:
+def send_email(to_address: str, token: str, drip_stage: int):
+    if not ses_client:
+        logging.error("SES client is not initialized. Skipping send.")
+        return False, False
+
+    template = db.get_template(drip_stage)
+    if not template:
+        logging.error(f"Template for stage {drip_stage} not found in DB.")
+        return False, False
+
+    subject = template['subject']
+    sender_name = template['sender_name']
+    
+    # Render HTML Body
     TRACKING_DOMAIN = "http://54.254.130.124"
     open_pixel_url = f"{TRACKING_DOMAIN}/track/open/{token}.gif"
     click_url = f"{TRACKING_DOMAIN}/track/click/{token}"
-
-    if drip_stage == 1:
-        body_content = f"""
-        <p>Chào bạn,</p>
-        <p>Tôi thấy hôm qua bạn có tải app Tool Tài Xỉu nhưng chưa thấy bạn kích hoạt sử dụng phần mềm. Không biết bạn có gặp lỗi gì ở bước cài đặt không?</p>
-        <p>Nếu bạn cần hỗ trợ cài đặt hoặc lấy mã kích hoạt, bạn cứ nhắn qua Bot Telegram của tôi ở link này nhé: <a href="{click_url}">Tại đây</a></p>
-        <p>Hoặc nếu bị lỗi gì cứ Reply lại email này cho tôi nha.</p>
-        <p>Cảm ơn bạn,</p>
-        <p>Hỗ trợ kỹ thuật</p>
-        """
-    elif drip_stage == 2:
-        body_content = f"""
-        <p>Chào bạn, tôi thấy hệ thống báo bạn chưa nhận mã chuyển đổi sang App AI mới.</p>
-        <p>Tối qua hệ thống AI phân tích thực tế trên Google Play đã có những nhịp rất chuẩn. Vì số lượng mã VIP 30 ngày có hạn, nếu đến tối nay bạn chưa lấy mã trong Bot Telegram, hệ thống sẽ tự động nhường mã này cho thành viên khác.</p>
-        <p>Bạn vào đây lấy mã ngay để giữ chỗ nhé: <a href="{click_url}">Tại đây</a></p>
-        <p>Cảm ơn bạn,</p>
-        """
-    else:
-        body_content = f"""
-        <p>Chào bạn, vì bạn không phản hồi nên hệ thống sẽ tiến hành hủy mã VIP nâng cấp bản AI của bạn vào 12h đêm nay.</p>
-        <p>Đây là email cuối cùng hỗ trợ bạn chuyển đổi. Từ ngày mai, bạn sẽ phải tải app trực tiếp và không còn được cấp mã VIP 30 ngày nữa.</p>
-        <p>Nếu bạn thay đổi ý định, hãy nhắn cho Bot hỗ trợ trước 12h đêm: <a href="{click_url}">Tại đây</a></p>
-        <p>Chào bạn,</p>
-        """
-
-    html = f"""
+    
+    body_content = template['body_html'].replace("{click_url}", click_url)
+    
+    html_body = f"""
     <html>
     <body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #000;">
         {body_content}
@@ -54,55 +45,16 @@ def create_email_html(token: str, drip_stage: int) -> str:
     </body>
     </html>
     """
-    return html
+    
+    # Strip basic tags for text body
+    text_body = body_content.replace("<p>", "").replace("</p>", "\n\n").replace("<br>", "\n").replace("</a>", "")
+    text_body = text_body.replace(f'<a href="{click_url}">Tại đây', click_url)
+    text_body = text_body.replace(f'<a href="{click_url}">', click_url)
 
-def create_email_text(token: str, drip_stage: int) -> str:
-    TRACKING_DOMAIN = "http://54.254.130.124"
-    click_url = f"{TRACKING_DOMAIN}/track/click/{token}"
-
-    if drip_stage == 1:
-        text = f"""Chào bạn,
-
-Tôi thấy hôm qua bạn có tải app Tool Tài Xỉu nhưng chưa thấy bạn kích hoạt sử dụng phần mềm. Không biết bạn có gặp lỗi gì ở bước cài đặt không?
-
-Nếu bạn cần hỗ trợ cài đặt hoặc lấy mã kích hoạt, bạn cứ nhắn qua Bot Telegram của tôi ở link này nhé: {click_url}
-
-Hoặc nếu bị lỗi gì cứ Reply lại email này cho tôi nha.
-
-Cảm ơn bạn,
-Hỗ trợ kỹ thuật"""
-    elif drip_stage == 2:
-        text = f"""Chào bạn, tôi thấy hệ thống báo bạn chưa nhận mã chuyển đổi sang App AI mới.
-
-Tối qua hệ thống AI phân tích thực tế trên Google Play đã có những nhịp rất chuẩn. Vì số lượng mã VIP 30 ngày có hạn, nếu đến tối nay bạn chưa lấy mã trong Bot Telegram, hệ thống sẽ tự động nhường mã này cho thành viên khác.
-
-Bạn vào đây lấy mã ngay để giữ chỗ nhé: {click_url}
-
-Cảm ơn bạn,"""
-    else:
-        text = f"""Chào bạn, vì bạn không phản hồi nên hệ thống sẽ tiến hành hủy mã VIP nâng cấp bản AI của bạn vào 12h đêm nay.
-
-Đây là email cuối cùng hỗ trợ bạn chuyển đổi. Từ ngày mai, bạn sẽ phải tải app trực tiếp và không còn được cấp mã VIP 30 ngày nữa.
-
-Nếu bạn thay đổi ý định, hãy nhắn cho Bot hỗ trợ trước 12h đêm: {click_url}
-
-Chào bạn,"""
-    return text
-
-def send_email(to_address: str, token: str, drip_stage: int):
-    if not ses_client:
-        logging.error("SES client is not initialized. Skipping send.")
-        return False, False
-
-    if drip_stage == 1:
-        subject = "Lỗi cài đặt app hôm qua?"
-    elif drip_stage == 2:
-        subject = "Trạng thái mã VIP của bạn (Chưa kích hoạt)"
-    else:
-        subject = "Thông báo hủy mã phiên bản mới"
-
-    html_body = create_email_html(token, drip_stage)
-    text_body = create_email_text(token, drip_stage)
+    # Format Sender Name with Default Email
+    # Fallback to hardcoded admin email if SENDER is not properly formatted
+    sender_email = "support@tooltaixiu.org" 
+    formatted_sender = f"{sender_name} <{sender_email}>"
 
     try:
         response = ses_client.send_email(
@@ -125,7 +77,7 @@ def send_email(to_address: str, token: str, drip_stage: int):
                     'Data': subject,
                 },
             },
-            Source=SENDER,
+            Source=formatted_sender,
         )
     except ClientError as e:
         error_code = e.response['Error']['Code']

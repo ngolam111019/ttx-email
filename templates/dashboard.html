@@ -275,6 +275,41 @@
         <div id="test-result" style="display: none; padding: 0.75rem 1rem; border-radius: 8px; width: 100%; box-sizing: border-box; font-size: 0.9rem; margin-top: 0.5rem;"></div>
     </div>
 
+    <!-- Template Editor Panel -->
+    <div class="controls-panel" style="flex-direction: column; align-items: flex-start; gap: 1rem; margin-bottom: 2rem;">
+        <div>
+            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">📝 Chỉnh sửa Mẫu Email (Templates)</div>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">Sử dụng biến <code>{click_url}</code> vào vị trí bạn muốn chèn link chuyển hướng sang Bot Telegram. Ảnh Tracking Pixel tự động được nhúng ngầm ở cuối thư.</div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem; width: 100%;">
+            <button onclick="loadTemplate(1)" class="tab-btn" id="tab-1" style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--primary); background: rgba(59, 130, 246, 0.2); color: var(--primary); font-weight: 600; cursor: pointer; transition: all 0.2s;">Mẫu Ngày 1</button>
+            <button onclick="loadTemplate(2)" class="tab-btn" id="tab-2" style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: white; cursor: pointer; transition: all 0.2s;">Mẫu Ngày 2</button>
+            <button onclick="loadTemplate(3)" class="tab-btn" id="tab-3" style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: white; cursor: pointer; transition: all 0.2s;">Mẫu Ngày 3</button>
+        </div>
+        
+        <div id="editor-form" style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">
+            <input type="hidden" id="edit-stage" value="1">
+            
+            <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-muted);">Tên Hiển Thị (Người Gửi):</label>
+            <input type="text" id="edit-sender" placeholder="VD: Hỗ trợ Kỹ thuật" 
+                   style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-family: inherit;">
+            
+            <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">Tiêu Đề Email (Subject):</label>
+            <input type="text" id="edit-subject" placeholder="Tiêu đề email..." 
+                   style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-family: inherit;">
+            
+            <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">Nội Dung Email (HTML):</label>
+            <textarea id="edit-body" rows="8" 
+                   style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-family: inherit; resize: vertical; line-height: 1.5;"></textarea>
+                   
+            <button onclick="saveTemplate()" id="btn-save-template" style="margin-top: 1rem; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; background: var(--success); color: white; font-weight: 600; cursor: pointer; transition: opacity 0.2s;">
+                Lưu Cập Nhật (Ngày 1)
+            </button>
+            <div id="save-result" style="display: none; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; margin-top: 0.5rem;"></div>
+        </div>
+    </div>
+
     <div class="dashboard-grid">
         <!-- Total Emails -->
         <div class="card">
@@ -473,10 +508,109 @@
             }
         }
 
+        // Template Editor Logic
+        let allTemplates = [];
+
+        async function fetchTemplates() {
+            try {
+                const response = await fetch('/api/templates');
+                allTemplates = await response.json();
+                loadTemplate(1); // Mặc định load ngày 1
+            } catch (error) {
+                console.error("Error fetching templates:", error);
+            }
+        }
+
+        function loadTemplate(stage) {
+            // Update tabs UI
+            for (let i = 1; i <= 3; i++) {
+                const tab = document.getElementById(`tab-${i}`);
+                if (i === stage) {
+                    tab.style.background = 'rgba(59, 130, 246, 0.2)';
+                    tab.style.borderColor = 'var(--primary)';
+                    tab.style.color = 'var(--primary)';
+                    tab.style.fontWeight = '600';
+                } else {
+                    tab.style.background = 'transparent';
+                    tab.style.borderColor = 'rgba(255,255,255,0.1)';
+                    tab.style.color = 'white';
+                    tab.style.fontWeight = '400';
+                }
+            }
+            
+            // Find template data
+            const template = allTemplates.find(t => t.stage === stage);
+            if (template) {
+                document.getElementById('edit-stage').value = stage;
+                document.getElementById('edit-sender').value = template.sender_name;
+                document.getElementById('edit-subject').value = template.subject;
+                document.getElementById('edit-body').value = template.body_html;
+                document.getElementById('btn-save-template').innerText = `Lưu Cập Nhật (Ngày ${stage})`;
+                document.getElementById('save-result').style.display = 'none';
+            }
+        }
+
+        async function saveTemplate() {
+            const stage = document.getElementById('edit-stage').value;
+            const sender_name = document.getElementById('edit-sender').value;
+            const subject = document.getElementById('edit-subject').value;
+            const body_html = document.getElementById('edit-body').value;
+            
+            const btn = document.getElementById('btn-save-template');
+            const resultDiv = document.getElementById('save-result');
+            
+            btn.innerText = 'Đang lưu...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        stage: parseInt(stage),
+                        sender_name: sender_name,
+                        subject: subject,
+                        body_html: body_html
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.color = 'var(--success)';
+                    resultDiv.innerText = `Đã lưu thành công Mẫu Ngày ${stage}!`;
+                    // Refresh data
+                    await fetchTemplates();
+                    // Preserve selected tab
+                    loadTemplate(parseInt(stage));
+                } else {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.color = '#ef4444';
+                    resultDiv.innerText = data.message || 'Lưu thất bại';
+                }
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                resultDiv.style.color = '#ef4444';
+                resultDiv.innerText = 'Lỗi kết nối tới máy chủ!';
+            } finally {
+                btn.innerText = `Lưu Cập Nhật (Ngày ${stage})`;
+                btn.disabled = false;
+                
+                // Ẩn thông báo sau 3s
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
         // Fetch immediately, then every 5 seconds
         fetchStatus();
         fetchDailyStats();
         fetchStats();
+        fetchTemplates();
         setInterval(() => {
             fetchStats();
             fetchDailyStats();

@@ -53,6 +53,40 @@ def init_db():
             conn.execute("ALTER TABLE email_campaign ADD COLUMN retry_count INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass # Cột đã tồn tại
+            
+        # Bảng Mẫu Email (Templates)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_templates (
+                stage INTEGER PRIMARY KEY,
+                subject TEXT NOT NULL,
+                sender_name TEXT NOT NULL,
+                body_html TEXT NOT NULL
+            )
+        """)
+        
+        # Tạo dữ liệu mặc định nếu bảng trống
+        count = conn.execute("SELECT COUNT(*) FROM email_templates").fetchone()[0]
+        if count == 0:
+            default_templates = [
+                (1, "Lỗi cài đặt app hôm qua?", "Support", 
+"""<p>Chào bạn,</p>
+<p>Tôi thấy hôm qua bạn có tải app Tool Tài Xỉu nhưng chưa thấy bạn kích hoạt sử dụng phần mềm. Không biết bạn có gặp lỗi gì ở bước cài đặt không?</p>
+<p>Nếu bạn cần hỗ trợ cài đặt hoặc lấy mã kích hoạt, bạn cứ nhắn qua Bot Telegram của tôi ở link này nhé: <a href="{click_url}">Tại đây</a></p>
+<p>Hoặc nếu bị lỗi gì cứ Reply lại email này cho tôi nha.</p>
+<p>Cảm ơn bạn,</p>
+<p>Hỗ trợ kỹ thuật</p>"""),
+                (2, "Trạng thái mã VIP của bạn (Chưa kích hoạt)", "Hỗ trợ Kỹ thuật",
+"""<p>Chào bạn, tôi thấy hệ thống báo bạn chưa nhận mã chuyển đổi sang App AI mới.</p>
+<p>Tối qua hệ thống AI phân tích thực tế trên Google Play đã có những nhịp rất chuẩn. Vì số lượng mã VIP 30 ngày có hạn, nếu đến tối nay bạn chưa lấy mã trong Bot Telegram, hệ thống sẽ tự động nhường mã này cho thành viên khác.</p>
+<p>Bạn vào đây lấy mã ngay để giữ chỗ nhé: <a href="{click_url}">Tại đây</a></p>
+<p>Cảm ơn bạn,</p>"""),
+                (3, "CẢNH BÁO: Hủy mã VIP Tài Xỉu AI", "Hệ thống Quản trị",
+"""<p>Chào bạn, vì bạn không phản hồi nên hệ thống sẽ tiến hành hủy mã VIP nâng cấp bản AI của bạn vào 12h đêm nay.</p>
+<p>Đây là email cuối cùng hỗ trợ bạn chuyển đổi. Từ ngày mai, bạn sẽ phải tải app trực tiếp và không còn được cấp mã VIP 30 ngày nữa.</p>
+<p>Nếu bạn thay đổi ý định, hãy nhắn cho Bot hỗ trợ trước 12h đêm: <a href="{click_url}">Tại đây</a></p>
+<p>Chào bạn,</p>""")
+            ]
+            conn.executemany("INSERT INTO email_templates (stage, subject, sender_name, body_html) VALUES (?, ?, ?, ?)", default_templates)
 
         conn.commit()
 
@@ -177,6 +211,26 @@ def toggle_campaign_status():
         conn.execute("UPDATE settings SET value = ? WHERE key = 'campaign_status'", (new_status,))
         conn.commit()
         return new_status
+
+# --- TEMPLATES FUNCTIONS ---
+def get_all_templates():
+    with get_conn() as conn:
+        rows = conn.execute("SELECT stage, subject, sender_name, body_html FROM email_templates ORDER BY stage ASC").fetchall()
+        return [dict(row) for row in rows]
+
+def get_template(stage: int):
+    with get_conn() as conn:
+        row = conn.execute("SELECT subject, sender_name, body_html FROM email_templates WHERE stage = ?", (stage,)).fetchone()
+        return dict(row) if row else None
+
+def update_template(stage: int, subject: str, sender_name: str, body_html: str):
+    with get_conn() as conn:
+        conn.execute("""
+            UPDATE email_templates 
+            SET subject = ?, sender_name = ?, body_html = ? 
+            WHERE stage = ?
+        """, (subject, sender_name, body_html, stage))
+        conn.commit()
 
 if __name__ == "__main__":
     init_db()

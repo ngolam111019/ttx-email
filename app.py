@@ -76,6 +76,24 @@ async def api_test_email(request: Request):
     else:
         return {"success": False, "message": f"Gửi thất bại. Hard error: {is_hard}"}
 
+@app.get("/api/templates")
+async def api_get_templates():
+    return db.get_all_templates()
+
+@app.post("/api/templates")
+async def api_save_template(request: Request):
+    data = await request.json()
+    stage = data.get("stage")
+    subject = data.get("subject")
+    sender_name = data.get("sender_name")
+    body_html = data.get("body_html")
+    
+    if not all([stage, subject, sender_name, body_html]):
+        return {"success": False, "message": "Missing fields"}
+        
+    db.update_template(int(stage), subject, sender_name, body_html)
+    return {"success": True}
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     # Serve the dashboard page
